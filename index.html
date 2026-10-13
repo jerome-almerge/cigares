@@ -116,7 +116,7 @@ footer{color:var(--muted);text-align:center;font-size:.75rem;padding:20px;border
 <div id="bord" style="display:none"></div>
 </main>
 <footer>Données personnelles de dégustation — mises à jour depuis ma base locale.</footer>
-<script src="donnees-public.js?v=2026-10-13-0710"></script>
+<script src="donnees-public.js?v=2026-10-13-0715"></script>
 <script>
 const D = window.DONNEES_PUB || {referentiel:[],degustations:[],stock:{}};
 document.getElementById('version').textContent = 'v' + (D.version || '');
@@ -277,8 +277,8 @@ function rendreBord(){
   const notesPar=fn=>{const acc={};for(const g of G){const n=parseFloat(g.maNote);if(!n||!g.refId)continue;const r=parId[g.refId];if(!r)continue;const ks=fn(r);if(!ks)continue;for(const k of String(ks).split(',').map(s=>s.trim()).filter(Boolean)){(acc[k]=acc[k]||[]).push(n);}}
     const m={};for(const k in acc)m[k]=acc[k].reduce((a,b)=>a+b,0)/acc[k].length;return m;};
   const comptePar=fn=>{const o={};for(const r of R){const ks=fn(r);if(!ks)continue;for(const k of String(ks).split(',').map(s=>s.trim()).filter(Boolean)){o[k]=(o[k]||0)+1;}}return o;};
-  const table=(titre,obj,moy)=>{let e=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
-    if(e.length>12){const reste=e.slice(12).reduce((s,x)=>s+x[1],0);e=e.slice(0,12);e.push(['… autres',reste]);}
+  const table=(titre,obj,moy,cap)=>{cap=cap||12;let e=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+    if(e.length>cap){const reste=e.slice(cap).reduce((s,x)=>s+x[1],0);e=e.slice(0,cap);e.push(['… autres',reste]);}
     const max=Math.max(...e.map(x=>x[1]),1);
     return `<div class="bPan"><h3>${titre} <small>— ★ ma note moyenne</small></h3>`+
       e.map(([k,v])=>`<div class="bRang"><span>${k}</span><div class="bf"><div class="br" style="width:${Math.round(v/max*100)}%"></div></div><span class="nb">${v}</span><span class="mn">${moy[k]!=null?'★ '+moy[k].toFixed(1).replace('.',','):'—'}</span></div>`).join('')+'</div>';};
@@ -292,7 +292,7 @@ function rendreBord(){
    table('Origine des capes',comptePar(r=>r.cape&&r.cape.split('(')[0]),notesPar(r=>r.cape&&r.cape.split('(')[0]))+
    table('Origine des tripes',comptePar(r=>r.tripe),notesPar(r=>r.tripe))+
    table('Intensité',comptePar(r=>r.intensite),notesPar(r=>r.intensite))+
-   table('Marques',comptePar(r=>r.marque),notesPar(r=>r.marque));
+   table('Marques',comptePar(r=>r.marque),notesPar(r=>r.marque),9999);
   window.scrollTo(0,0);
 }
 ['q','filtre','tri'].forEach(id=>$(id).addEventListener('input',rendre));
