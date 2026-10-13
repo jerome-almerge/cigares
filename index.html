@@ -50,12 +50,36 @@ main{max-width:760px;margin:0 auto;padding:12px 16px 60px}
 .nd{display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:.8rem;color:var(--muted);margin-top:6px}
 footer{color:var(--muted);text-align:center;font-size:.75rem;padding:20px;border-top:1px solid var(--line)}
 .vide{color:var(--muted);text-align:center;padding:30px 0}
+.onglets{display:flex;gap:8px;margin-bottom:8px}
+.onglets button{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--muted);font:inherit;font-size:.9rem;cursor:pointer}
+.onglets button.actif{color:var(--accent);border-color:var(--accent);font-weight:bold}
+.chrono{display:flex;align-items:flex-end;gap:4px;padding:22px 2px 6px;overflow-x:auto}
+.cGrp{flex:1 1 0;min-width:46px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;border-radius:10px;padding:6px 2px}
+.cGrp:active{background:var(--chip)}
+.cCols{display:flex;align-items:flex-end;gap:3px;height:120px}
+.cCol{width:15px;border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.cCol.e{background:var(--ok)}.cCol.s{background:var(--accent)}
+.cCol .v{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:.65rem;color:var(--muted)}
+.cGrp .per{font-size:.75rem;font-weight:bold}
+.cGrp .solde{font-size:.65rem;border-radius:9px;padding:1px 7px;background:var(--chip);color:var(--muted)}
+.cGrp .solde.plus{color:var(--ok)}.cGrp .solde.moins{color:var(--accent)}
+.cLeg{display:flex;gap:14px;font-size:.75rem;color:var(--muted);margin:4px 2px;flex-wrap:wrap}
+.cLeg .pt{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.mvtL{display:flex;gap:8px;align-items:baseline;padding:6px 4px;border-top:1px solid var(--line);font-size:.9rem}
+.mvtL:first-of-type{border-top:none}
+.mvtL .d{color:var(--muted);font-size:.75rem;white-space:nowrap}
+.mvtL .n{flex:1;min-width:0}
+.mvtL.lien{cursor:pointer}
 </style>
 </head>
 <body>
 <header>
   <h1>Mes Cigares <small id="version"></small></h1>
-  <div class="controls">
+  <div class="onglets">
+    <button id="ongCigares" class="actif" onclick="allerOnglet('cigares')">Cigares</button>
+    <button id="ongTemps" onclick="allerOnglet('temps')">Au fil du temps</button>
+  </div>
+  <div class="controls" id="barreCigares">
     <input type="search" id="q" placeholder="Marque, cigare, arôme…" autocomplete="off">
     <select id="filtre">
       <option value="">Tous</option>
@@ -74,6 +98,7 @@ footer{color:var(--muted);text-align:center;font-size:.75rem;padding:20px;border
   <div class="count" id="count"></div>
   <div id="liste"></div>
   <div id="detail" class="detail" style="display:none"></div>
+  <div id="temps" style="display:none"></div>
 </main>
 <footer>Données personnelles de dégustation — mises à jour depuis ma base locale.</footer>
 <script src="donnees-public.js"></script>
@@ -121,12 +146,83 @@ function rendre(){
      </div>
    </div>`).join(''):'<div class="vide">Aucun cigare ne correspond.</div>';
 }
+/* ===== onglets ===== */
+let onglet='cigares';
+function allerOnglet(o){
+  onglet=o;
+  document.getElementById('ongCigares').classList.toggle('actif',o==='cigares');
+  document.getElementById('ongTemps').classList.toggle('actif',o==='temps');
+  $('barreCigares').style.display=o==='cigares'?'':'none';
+  $('count').style.display=o==='cigares'?'':'none';
+  $('temps').style.display=o==='temps'?'':'none';
+  $('detail').style.display='none';
+  if(o==='cigares'){ $('liste').style.display=''; rendre(); }
+  else { $('liste').style.display='none'; rendreTemps(); }
+  window.scrollTo(0,0);
+}
+/* ===== au fil du temps (nombres uniquement) ===== */
+const MOIS_C=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+const MOIS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+let tempsVue={};
+function rendreTemps(){
+  const M=D.mouvements||[];
+  const el=$('temps');
+  const somme=l=>l.reduce((s,m)=>s+(m.q||0),0);
+  const E=M.filter(m=>m.t==='e'), S=M.filter(m=>m.t==='s');
+  const solde=somme(E)-somme(S);
+  let nav='', corps='', titre='', aide='';
+  if(tempsVue.mois){
+    titre='Détail de '+MOIS_L[parseInt(tempsVue.mois.slice(5))-1]+' '+tempsVue.mois.slice(0,4);
+    nav=`<span class="back" onclick="tempsVue={};rendreTemps()">← Toutes les années</span> &nbsp;
+         <span class="back" onclick="delete tempsVue.mois;rendreTemps()">← ${tempsVue.annee} mois par mois</span>`;
+    const fil=M.filter(m=>m.d.slice(0,7)===tempsVue.mois);
+    const lig=m=>{const r=fiches.find(f=>f.id===m.ref);
+      return `<div class="mvtL${r?' lien':''}" ${r?`onclick="voir('${m.ref}')"`:''}>
+        <span class="d">${m.d.slice(8)}/${m.d.slice(5,7)}</span>
+        <span class="n">${m.n||m.ref}${(m.q||1)>1?' ×'+m.q:''}</span>${r?'<span>›</span>':''}</div>`;};
+    const Em=fil.filter(m=>m.t==='e').sort((a,b)=>a.d<b.d?-1:1);
+    const Sm=fil.filter(m=>m.t==='s').sort((a,b)=>a.d<b.d?-1:1);
+    corps=`<div class="card" style="cursor:default"><div class="lbl" style="color:var(--ok)">🟢 Rentrés (${somme(Em)})</div>
+        ${Em.map(lig).join('')||'<div class="vide">Aucune entrée ce mois-ci.</div>'}</div>
+      <div class="card" style="cursor:default"><div class="lbl" style="color:var(--accent)">🔴 Dégustés / sortis (${somme(Sm)})</div>
+        ${Sm.map(lig).join('')||'<div class="vide">Aucune sortie ce mois-ci.</div>'}</div>`;
+  } else {
+    const parAnnee=!tempsVue.annee;
+    titre=parAnnee?'Année par année':tempsVue.annee+' — mois par mois';
+    aide=parAnnee?'touche une année pour le mois par mois':'touche un mois pour le détail';
+    if(!parAnnee) nav=`<span class="back" onclick="tempsVue={};rendreTemps()">← Toutes les années</span>`;
+    const fil=parAnnee?M:M.filter(m=>m.d.slice(0,4)===tempsVue.annee);
+    const par={};
+    for(const m of fil){const k=parAnnee?m.d.slice(0,4):m.d.slice(0,7);(par[k]=par[k]||{e:0,s:0})[m.t]+=m.q||0;}
+    const cles=Object.keys(par).sort();
+    const max=Math.max(1,...cles.flatMap(k=>[par[k].e,par[k].s]));
+    corps=`<div class="chrono">`+cles.map(k=>{
+      const p=par[k], so=p.e-p.s, lib=parAnnee?k:MOIS_C[parseInt(k.slice(5))-1];
+      const clic=parAnnee?`tempsVue={annee:'${k}'};rendreTemps()`:`tempsVue.mois='${k}';rendreTemps()`;
+      return `<div class="cGrp" onclick="${clic}">
+        <div class="cCols">
+          <div class="cCol e" style="height:${Math.max(2,Math.round(p.e/max*120))}px"><span class="v">${p.e||''}</span></div>
+          <div class="cCol s" style="height:${Math.max(2,Math.round(p.s/max*120))}px"><span class="v">${p.s||''}</span></div>
+        </div><span class="per">${lib}</span>
+        <span class="solde ${so>0?'plus':so<0?'moins':''}">${so>0?'+':''}${so}</span></div>`;
+    }).join('')+`</div>`;
+  }
+  el.innerHTML=`<div class="count">${somme(E)} rentrés · ${somme(S)} dégustés · solde ${solde>0?'+':''}${solde} en cave</div>
+    ${nav?`<div style="margin:4px 0">${nav}</div>`:''}
+    <div class="card" style="cursor:default">
+      <div class="row"><b>${titre}</b><span class="degdate">${aide}</span></div>
+      <div class="cLeg"><span><span class="pt" style="background:var(--ok)"></span>rentrés</span>
+        <span><span class="pt" style="background:var(--accent)"></span>dégustés / sortis</span></div>
+      ${corps.startsWith('<div class="chrono"')?corps:''}
+    </div>${corps.startsWith('<div class="chrono"')?'':corps}`;
+}
 function voir(id){
   const x=fiches.find(f=>f.id===id); if(!x)return;
   $('liste').style.display='none';
+  $('temps').style.display='none';
   const dv=$('detail'); dv.style.display='';
   const origines=[['Pays',x.paysFab],['Cape',x.cape],['Sous-cape',x.sousCape],['Tripe',x.tripe]].filter(o=>o[1]);
-  dv.innerHTML=`<span class="back" onclick="rendre()">← Retour</span>
+  dv.innerHTML=`<span class="back" onclick="retourDepuisFiche()">← Retour</span>
    <div class="card">
     <div class="row"><span class="marque">${x.marque||''}</span>
       <span class="note">${x.maNote!=null?'★ '+x.maNote.toFixed(1):''}</span></div>
@@ -146,6 +242,11 @@ function voir(id){
       </div>`;}).join('')||'<div class="vide">Pas encore dégusté.</div>'}
    </div>`;
   window.scrollTo(0,0);
+}
+function retourDepuisFiche(){
+  $('detail').style.display='none';
+  if(onglet==='temps'){ $('temps').style.display=''; rendreTemps(); window.scrollTo(0,0); }
+  else rendre();
 }
 ['q','filtre','tri'].forEach(id=>$(id).addEventListener('input',rendre));
 rendre();
