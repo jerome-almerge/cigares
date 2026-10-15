@@ -83,6 +83,44 @@ footer{color:var(--muted);text-align:center;font-size:.75rem;padding:20px;border
 .bRang .br{background:var(--accent);height:100%}
 .bRang .nb{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
 .bRang .mn{text-align:right;color:var(--accent);font-weight:bold;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* civettes */
+.achat{font-size:.82rem;color:var(--muted);margin-top:4px}
+.achat a,.lienCiv{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent);cursor:pointer}
+.catTitre{margin:22px 2px 4px;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.catTitre small{display:block;text-transform:none;letter-spacing:0;font-size:.78rem}
+.catItem{background:transparent;border:1px dashed var(--line);border-radius:12px;padding:9px 12px;margin:8px 0}
+.catItem .nom{font-weight:normal}
+.catItem a{font-size:.78rem;color:var(--accent);text-decoration:none;white-space:nowrap}
+.catPlus{color:var(--muted);font-size:.85rem;text-align:center;padding:8px 0 4px;font-style:italic}
+.civT{width:100%;border-collapse:collapse;font-size:.85rem}
+.civT th{text-align:left;font-weight:normal;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;padding:4px 6px 6px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
+.civT th.num,.civT td.num{text-align:right}
+.civT th.on{color:var(--accent)}
+.civT td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.civT tr:last-child td{border-bottom:none}
+.civT tbody tr{cursor:pointer}
+.civT tbody tr:active{background:var(--chip)}
+.civT td.nm{color:var(--ink)}
+.civT td.vl{color:var(--muted)}
+.civT td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.civT td.mn{color:var(--accent);font-weight:bold}
+.voile{position:fixed;inset:0;z-index:20;background:rgba(20,14,9,.55);display:flex;align-items:center;justify-content:center;padding:24px}
+.modale{background:var(--bg);border:1px solid var(--line);border-radius:16px;width:100%;max-width:560px;max-height:100%;overflow-y:auto;padding:16px 18px 20px;position:relative}
+.modale h2{font-size:1.15rem;margin:0 36px 4px 0;line-height:1.3}
+.fermer{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:1.1rem;cursor:pointer;line-height:1}
+.civLiens{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.civLiens a{background:var(--chip);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:.82rem;text-decoration:none}
+.civCig{display:flex;gap:8px;align-items:baseline;padding:8px 2px;border-top:1px solid var(--line);font-size:.9rem}
+.civCig:first-of-type{border-top:none}
+.civCig .n{flex:1;min-width:0}
+.civCig .n small{display:block;color:var(--muted);font-size:.75rem}
+.civCig .dr{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.civCig .st{color:var(--ok);font-size:.75rem;white-space:nowrap}
+.civCig.lien{cursor:pointer}
+@media (max-width:600px){
+  .voile{padding:0;align-items:stretch}
+  .modale{border-radius:0;border:none;max-width:none;height:100%;max-height:none}
+}
 </style>
 </head>
 <body>
@@ -111,18 +149,35 @@ footer{color:var(--muted);text-align:center;font-size:.75rem;padding:20px;border
 <main>
   <div class="count" id="count"></div>
   <div id="liste"></div>
+  <div id="catalogue"></div>
   <div id="detail" class="detail" style="display:none"></div>
   <div id="temps" style="display:none"></div>
 <div id="bord" style="display:none"></div>
 </main>
+<div id="civVoile" class="voile" style="display:none" onclick="if(event.target===this)fermerCiv()">
+  <div class="modale" role="dialog" aria-modal="true" aria-labelledby="civNom" id="civModale"></div>
+</div>
 <footer>Données personnelles de dégustation — mises à jour depuis ma base locale.</footer>
-<script src="donnees-public.js?v=2026-10-13-0715"></script>
+<script src="donnees-public.js?v=2026-10-15-1"></script>
 <script>
 const D = window.DONNEES_PUB || {referentiel:[],degustations:[],stock:{}};
+D.catalogue = D.catalogue || []; D.civettes = D.civettes || [];
 document.getElementById('version').textContent = 'v' + (D.version || '');
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[’'`]/g,' ');
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const degsParRef = {};
 for (const g of D.degustations) (degsParRef[g.refId] = degsParRef[g.refId] || []).push(g);
 for (const k in degsParRef) degsParRef[k].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+/* civettes : où j'ai acheté chaque cigare (dégustations + achats sans dégustation) */
+const degParId = {}; for (const g of D.degustations) degParId[g.id] = g;
+const civParId = {}, civsParRef = {};
+for (const c of D.civettes){
+  civParId[c.id] = c;
+  const refs = new Set(c.refIds||[]);
+  for (const gid of c.degustations||[]){ const g=degParId[gid]; if(g&&g.refId) refs.add(g.refId); }
+  c.refs = [...refs];
+  for (const r of c.refs) (civsParRef[r] = civsParRef[r] || []).push(c);
+}
 const fiches = D.referentiel.map(r => {
   const gs = degsParRef[r.id] || [];
   const notes = gs.map(g=>g.maNote).filter(n=>typeof n==='number');
@@ -131,14 +186,39 @@ const fiches = D.referentiel.map(r => {
   return {...r, gs, maNote, nbDeg:gs.length, texte,
     derniere: gs.length ? String(gs[0].date) : '',
     stock: D.stock[r.id] || 0,
-    hay: (r.marque+' '+r.nom+' '+r.vitole+' '+r.paysFab+' '+r.cape+' '+r.tripe+' '+gs.map(g=>(g.publication||'')+' '+(g.ressenti||'')).join(' ')).toLowerCase()};
+    civs: civsParRef[r.id] || [],
+    hay: norm(r.marque+' '+r.nom+' '+r.vitole+' '+r.paysFab+' '+r.cape+' '+r.tripe+' '+gs.map(g=>(g.publication||'')+' '+(g.ressenti||'')).join(' '))};
 });
+const ficheParId = {}; for (const x of fiches) ficheParId[x.id] = x;
+/* catalogue L'Amateur : uniquement ce qui n'est pas déjà dans mes cigares */
+const catalogue = D.catalogue.filter(c => !(c.refId && ficheParId[c.refId]))
+  .map(c => ({...c, hay: norm([c.titre,c.vitole,c.module,c.fab,c.intensite,c.slug.replace(/-/g,' ')].join(' '))}));
 const $=id=>document.getElementById(id);
 const et=n=>n==null?'':'★'.repeat(Math.round(n))+'☆'.repeat(5-Math.round(n));
 function fdate(s){ if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; const [a,m,j]=s.split('-'); return j+'/'+m+'/'+a; }
+const virgule = n => n.toFixed(1).replace('.',',');
+function achatHtml(x){
+  if(!x.civs.length) return '';
+  return `<div class="achat">Acheté chez : ${x.civs.map(c=>`<a onclick="event.stopPropagation();ouvrirCiv('${c.id}')">${esc(c.nom.split(' — ')[0])}</a>${c.ville?' ('+esc(c.ville)+')':''}`).join(', ')}</div>`;
+}
+const CAT_MAX = 30;
+function rendreCatalogue(mots){
+  const el=$('catalogue');
+  if(!mots.length){ el.innerHTML=''; return; }
+  const R=catalogue.filter(c=>mots.every(m=>c.hay.includes(m)));
+  if(!R.length){ el.innerHTML=''; return; }
+  R.sort((a,b)=>(a.titre+' '+a.vitole).localeCompare(b.titre+' '+b.vitole,'fr'));
+  el.innerHTML=`<div class="catTitre">Au catalogue de L'Amateur de Cigare <small>pas encore dans ma cave — ${R.length} résultat${R.length>1?'s':''}</small></div>`+
+    R.slice(0,CAT_MAX).map(c=>`<div class="catItem">
+      <div class="row"><span class="marque">${esc(c.titre)}</span>${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener">fiche L'Amateur ↗</a>`:''}</div>
+      <div class="nom">${esc(c.vitole)}</div>
+      <div class="meta">${[c.module,c.fab,c.intensite].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')+
+    (R.length>CAT_MAX?`<div class="catPlus">${R.length-CAT_MAX} autre${R.length-CAT_MAX>1?'s':''} résultat${R.length-CAT_MAX>1?'s':''}, affine ta recherche</div>`:'');
+}
 function rendre(){
-  const q=$('q').value.trim().toLowerCase(), f=$('filtre').value, t=$('tri').value;
-  let L=fiches.filter(x=>!q||x.hay.includes(q));
+  const q=norm($('q').value.trim()), f=$('filtre').value, t=$('tri').value;
+  const mots=q.length>=2?q.split(/\s+/).filter(Boolean):[];
+  let L=fiches.filter(x=>!mots.length||mots.every(m=>x.hay.includes(m)));
   if(f==='cave')L=L.filter(x=>x.stock>0);
   if(f==='degustes')L=L.filter(x=>x.nbDeg>0);
   if(f==='avis')L=L.filter(x=>x.texte);
@@ -159,12 +239,15 @@ function rendre(){
        ${x.nbDeg?`<span class="chip">${x.nbDeg} dégustation${x.nbDeg>1?'s':''}</span>`:''}
        ${x.texte?'<span class="chip">mon avis ✍</span>':''}
      </div>
-   </div>`).join(''):'<div class="vide">Aucun cigare ne correspond.</div>';
+     ${achatHtml(x)}
+   </div>`).join(''):`<div class="vide">Aucun de mes cigares ne correspond.</div>`;
+  $('catalogue').style.display='';
+  rendreCatalogue(mots);
 }
 /* ===== onglets ===== */
 let onglet='cigares';
 function allerOnglet(o){
-  onglet=o;
+  onglet=o; retourCiv=null;
   document.getElementById('ongCigares').classList.toggle('actif',o==='cigares');
   document.getElementById('ongTemps').classList.toggle('actif',o==='temps');
   document.getElementById('ongBord').classList.toggle('actif',o==='bord');
@@ -174,6 +257,7 @@ function allerOnglet(o){
   $('bord').style.display=o==='bord'?'':'none';
   $('detail').style.display='none';
   $('liste').style.display=o==='cigares'?'':'none';
+  $('catalogue').style.display=o==='cigares'?'':'none';
   if(o==='cigares') rendre();
   else if(o==='temps') rendreTemps();
   else rendreBord();
@@ -238,7 +322,9 @@ function rendreTemps(){
 function voir(id){
   const x=fiches.find(f=>f.id===id); if(!x)return;
   $('liste').style.display='none';
+  $('catalogue').style.display='none';
   $('temps').style.display='none';
+  $('bord').style.display='none';
   const dv=$('detail'); dv.style.display='';
   const origines=[['Pays',x.paysFab],['Cape',x.cape],['Sous-cape',x.sousCape],['Tripe',x.tripe]].filter(o=>o[1]);
   dv.innerHTML=`<span class="back" onclick="retourDepuisFiche()">← Retour</span>
@@ -248,6 +334,7 @@ function voir(id){
     <div class="nom" style="font-size:1.15rem">${x.nom||x.id}</div>
     <div class="meta">${[x.vitole,x.module,x.dimensions].filter(Boolean).join(' · ')}</div>
     ${x.stock>0?`<div class="badges"><span class="chip cave">En cave ×${x.stock}</span></div>`:''}
+    ${achatHtml(x)}
     ${origines.length?`<div class="lbl">Origines</div><div class="nd">${origines.map(o=>`<span>${o[0]}</span><span>${o[1]}</span>`).join('')}</div>`:''}
     ${x.gs.map(g=>{
       const nd=g.notesDetail;
@@ -264,6 +351,7 @@ function voir(id){
 }
 function retourDepuisFiche(){
   $('detail').style.display='none';
+  if(retourCiv){ const c=retourCiv; retourCiv=null; allerOnglet('bord'); ouvrirCiv(c); return; }
   if(onglet==='temps'){ $('temps').style.display=''; rendreTemps(); window.scrollTo(0,0); }
   else if(onglet==='bord'){ $('bord').style.display=''; rendreBord(); window.scrollTo(0,0); }
   else rendre();
@@ -287,14 +375,73 @@ function rendreBord(){
     <div class="bTuile"><div class="ch">${G.length}</div><div class="lg">dégustations</div></div>
     <div class="bTuile"><div class="ch">${R.length}</div><div class="lg">cigares au référentiel</div></div>
     <div class="bTuile"><div class="ch">${stockN}</div><div class="lg">cigares en cave</div></div>
-   </div>`+
+   </div><div class="bPan" id="civPan"></div>`+
    table('Pays de fabrication',comptePar(r=>r.paysFab),notesPar(r=>r.paysFab))+
    table('Origine des capes',comptePar(r=>r.cape&&r.cape.split('(')[0]),notesPar(r=>r.cape&&r.cape.split('(')[0]))+
    table('Origine des tripes',comptePar(r=>r.tripe),notesPar(r=>r.tripe))+
    table('Intensité',comptePar(r=>r.intensite),notesPar(r=>r.intensite))+
    table('Marques',comptePar(r=>r.marque),notesPar(r=>r.marque),9999);
+  rendreCivTable();
   window.scrollTo(0,0);
 }
+/* ===== mes civettes ===== */
+const civLignes = D.civettes.map(c=>{
+  const gs=(c.degustations||[]).map(id=>degParId[id]).filter(Boolean);
+  const n=gs.map(g=>parseFloat(g.maNote)).filter(v=>v>0);
+  return {c, nom:c.nom, ville:c.ville||'', nb:gs.length, moy:n.length?n.reduce((a,b)=>a+b,0)/n.length:null};
+});
+let civTri={col:'nb',sens:-1};
+function trierCiv(col){
+  civTri = civTri.col===col ? {col, sens:-civTri.sens} : {col, sens:(col==='nb'||col==='moy')?-1:1};
+  rendreCivTable();
+}
+function rendreCivTable(){
+  const el=$('civPan'); if(!el) return;
+  const {col,sens}=civTri;
+  const L=[...civLignes].sort((a,b)=>{
+    const va=a[col], vb=b[col];
+    if(va==null&&vb==null) return a.nom.localeCompare(b.nom,'fr');
+    if(va==null) return 1; if(vb==null) return -1;   // les « — » toujours en bas
+    const r=typeof va==='number'?va-vb:String(va).localeCompare(String(vb),'fr');
+    return r*sens || a.nom.localeCompare(b.nom,'fr');
+  });
+  const th=(k,lib,num)=>`<th class="${num?'num ':''}${col===k?'on':''}" onclick="trierCiv('${k}')" aria-sort="${col===k?(sens>0?'ascending':'descending'):'none'}">${lib}${col===k?(sens>0?' ▲':' ▼'):''}</th>`;
+  el.innerHTML=`<h3>Mes civettes <small>— là où j'achète mes cigares</small></h3>
+    <table class="civT"><thead><tr>${th('nom','Civette')}${th('ville','Ville')}${th('nb','Dég.',1)}${th('moy','★ moy.',1)}</tr></thead>
+    <tbody>${L.map(x=>`<tr onclick="ouvrirCiv('${x.c.id}')"><td class="nm">${esc(x.nom.split(' — ')[0])}</td><td class="vl">${esc(x.ville)}</td>
+      <td class="num">${x.nb}</td><td class="num mn">${x.moy!=null?'★ '+virgule(x.moy):'—'}</td></tr>`).join('')}</tbody></table>`;
+}
+let retourCiv=null, civOuverte=null;
+function ouvrirCiv(id){
+  const c=civParId[id]; if(!c) return;
+  civOuverte=id;
+  const cig=c.refs.map(r=>ficheParId[r]).filter(Boolean)
+    .sort((a,b)=>((a.marque||'')+' '+a.nom).localeCompare((b.marque||'')+' '+b.nom,'fr'));
+  const q=encodeURIComponent(c.nom+', '+c.adresse);
+  const liens=[c.facebook&&['Facebook',c.facebook],c.instagram&&['Instagram',c.instagram],c.site&&['Site web',c.site]].filter(Boolean);
+  $('civModale').innerHTML=`<button class="fermer" onclick="fermerCiv()" aria-label="Fermer">✕</button>
+    <h2 id="civNom">${esc(c.nom)}</h2>
+    <div class="meta">${esc(c.adresse)}</div>
+    <div class="civLiens"><a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Voir sur la carte ↗</a>
+      ${liens.map(l=>`<a href="${esc(l[1])}" target="_blank" rel="noopener">${l[0]} ↗</a>`).join('')}</div>
+    <div class="lbl" style="margin-top:14px">Cigares achetés ici (${cig.length})</div>
+    <div class="card" style="cursor:default;margin-top:6px">${cig.map(x=>`<div class="civCig lien" onclick="civVersCigare('${x.id}')">
+        <span class="n">${esc(((x.marque||'')+' '+(x.nom||x.id)).trim())}<small>${[x.vitole,x.paysFab].filter(Boolean).map(esc).join(' · ')}</small></span>
+        <span class="dr">${x.maNote!=null?`<span class="note">★ ${virgule(x.maNote)}</span>`:''}${x.stock>0?`<span class="st">en stock : ${x.stock}</span>`:''}</span>
+        <span>›</span></div>`).join('')||'<div class="vide">Aucun cigare enregistré pour l\'instant.</div>'}</div>`;
+  $('civVoile').style.display='flex';
+  document.body.style.overflow='hidden';
+  $('civModale').scrollTop=0;
+}
+function fermerCiv(){ $('civVoile').style.display='none'; document.body.style.overflow=''; civOuverte=null; }
+function civVersCigare(id){
+  const depuis=onglet, c=civOuverte;
+  fermerCiv();
+  if(onglet!=='cigares') allerOnglet('cigares');
+  if(depuis==='bord') retourCiv=c;
+  voir(id);
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&civOuverte) fermerCiv(); });
 ['q','filtre','tri'].forEach(id=>$(id).addEventListener('input',rendre));
 rendre();
 </script>
