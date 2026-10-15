@@ -121,6 +121,7 @@ footer{color:var(--muted);text-align:center;font-size:.75rem;padding:20px;border
   .voile{padding:0;align-items:stretch}
   .modale{border-radius:0;border:none;max-width:none;height:100%;max-height:none}
 }
+.noteAm{font-size:13px;color:#8a5a14;white-space:nowrap;margin-left:8px}
 </style>
 </head>
 <body>
@@ -207,11 +208,11 @@ function rendreCatalogue(mots){
   if(!mots.length){ el.innerHTML=''; return; }
   const R=catalogue.filter(c=>mots.every(m=>c.hay.includes(m)));
   if(!R.length){ el.innerHTML=''; return; }
-  R.sort((a,b)=>(a.titre+' '+a.vitole).localeCompare(b.titre+' '+b.vitole,'fr'));
+  R.sort((a,b)=>a.titre.localeCompare(b.titre,'fr')||a.vitole.localeCompare(b.vitole,'fr',{numeric:true}));
   el.innerHTML=`<div class="catTitre">Au catalogue de L'Amateur de Cigare <small>pas encore dans ma cave — ${R.length} résultat${R.length>1?'s':''}</small></div>`+
     R.slice(0,CAT_MAX).map(c=>`<div class="catItem">
       <div class="row"><span class="marque">${esc(c.titre)}</span>${c.url?`<a href="${esc(c.url)}" target="_blank" rel="noopener">fiche L'Amateur ↗</a>`:''}</div>
-      <div class="nom">${esc(c.vitole)}</div>
+      <div class="row"><span class="nom">${esc(c.vitole)}</span>${c.noteAm!=null?`<span class="noteAm" title="Note de L'Amateur de Cigare">L'Amateur ${virgule(c.noteAm)} / 5</span>`:''}</div>
       <div class="meta">${[c.module,c.fab,c.intensite].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')+
     (R.length>CAT_MAX?`<div class="catPlus">${R.length-CAT_MAX} autre${R.length-CAT_MAX>1?'s':''} résultat${R.length-CAT_MAX>1?'s':''}, affine ta recherche</div>`:'');
 }
