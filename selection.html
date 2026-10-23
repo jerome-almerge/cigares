@@ -84,9 +84,9 @@ textarea.copy{width:100%;box-sizing:border-box;min-height:120px;margin-top:10px;
 <section id="v-sel">
   <div class="tools" style="margin:2px 0 10px">
     <span>Trier :</span>
-    <button class="chip" data-s="note" aria-pressed="true">Note</button>
+    <button class="chip" data-s="note" aria-pressed="false">Note</button>
     <button class="chip" data-s="prix" aria-pressed="false">Prix</button>
-    <button class="chip" data-s="nom" aria-pressed="false">Nom</button>
+    <button class="chip" data-s="nom" aria-pressed="true">Nom</button>
     <span style="margin-left:6px">Force :</span>
     <button class="chip" data-f="L" aria-pressed="false">Léger</button>
     <button class="chip" data-f="M" aria-pressed="false">Moyen</button>
@@ -123,7 +123,7 @@ const byId=Object.fromEntries(D.map(x=>[x.id,x]));
 let sel={};try{sel=JSON.parse(localStorage.getItem('sel')||'{}')||{}}catch(e){sel={}}
 for(const k in sel) if(!byId[k]) delete sel[k];
 const save=()=>{try{localStorage.setItem('sel',JSON.stringify(sel))}catch(e){}};
-let sortBy='note',force=null,limit=60;
+let sortBy='nom',force=null,limit=60;
 const FL={L:'Léger',M:'Moyen',F:'Fort'};
 
 function filtered(){
